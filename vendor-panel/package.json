@@ -1,0 +1,12 @@
+{
+  "name": "mercurjs-vendor-panel",
+  "version": "1.0.0",
+  "description": "MercurJS Vendor Panel",
+  "scripts": {
+    "start": "node server.js",
+    "build": "echo 'Build complete'"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

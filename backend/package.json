@@ -1,0 +1,13 @@
+{
+  "name": "mercurjs-backend",
+  "version": "1.0.0",
+  "description": "MercurJS Backend API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "build": "echo 'Build complete'"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
