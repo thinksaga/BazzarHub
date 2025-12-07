@@ -1,6 +1,58 @@
 # MercurJS Multivendor Marketplace
 
-This docker-compose setup provides a complete environment for running MercurJS multivendor marketplace with all necessary services.
+This docker-compose setup provides a complete environment for running MercurJS multivendor marketplace with Redis integration for session management, caching, and real-time notifications.
+
+## 🚀 Features
+
+### Redis Integration
+- **Session Management**: Persistent user sessions with Redis
+- **Cart Persistence**: Shopping cart data stored in Redis
+- **API Response Caching**: Intelligent caching for products, categories, and vendors
+- **Real-time Notifications**: Pub/Sub system for order updates and vendor notifications
+- **Cache Invalidation**: Smart cache invalidation strategies for data consistency
+
+## 📊 Redis Integration
+
+### Session Management
+- User sessions are stored in Redis with configurable TTL
+- Automatic session cleanup and management
+- Session data includes user info, cart state, and preferences
+
+### API Caching
+- **Product Caching**: Product details cached for 1 hour
+- **Category Tree**: Category hierarchy cached for 1 hour  
+- **Vendor Data**: Vendor information cached for 1 hour
+- **API Responses**: General API responses cached for 5 minutes
+
+### Cache Invalidation Strategies
+- **Product Updates**: Invalidates product cache and related category/vendor caches
+- **Inventory Changes**: Updates product cache when stock levels change
+- **Order Events**: Short-term caching for order-related data
+- **Bulk Operations**: Namespace-based cache clearing for maintenance
+
+### Real-time Notifications
+- **Order Notifications**: Real-time order status updates
+- **Vendor Alerts**: New orders, status changes, and inventory alerts
+- **Admin Notifications**: User registrations, payment issues, vendor applications
+- **Pub/Sub Channels**: Dedicated channels for different event types
+
+### Example API Endpoints
+```
+GET  /api/redis/products/:id     - Get cached product
+POST /api/redis/orders           - Create order with notifications
+PUT  /api/redis/products/:id     - Update product (triggers invalidation)
+POST /api/redis/auth/login       - Create user session
+POST /api/redis/cart/:id/items   - Add items to cart
+GET  /api/redis/cart/:id         - Get cart from Redis
+```
+
+### Cache Management
+```
+POST /admin/cache/clear                    - Clear all cache
+POST /admin/cache/invalidate/product/:id   - Invalidate product cache
+POST /admin/cache/invalidate/vendor/:id    - Invalidate vendor cache
+POST /admin/cache/invalidate/category/:id  - Invalidate category cache
+```
 
 ## Services
 
