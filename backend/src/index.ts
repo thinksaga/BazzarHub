@@ -1,4 +1,5 @@
 import express from "express"
+import cors from "cors"
 import RedisService from "./services/redis"
 import CacheMiddleware from "./middlewares/cache"
 import NotificationService from "./services/notifications"
@@ -8,8 +9,16 @@ import searchRouter from "./api/search.routes"
 import advancedSearchRouter from "./api/advanced-search.routes"
 import paymentRouter from "./api/payment.routes"
 import vendorPayoutRouter from "./api/vendor-payout.routes"
+import productsRouter from "./api/routes/products"
+import ordersRouter from "./api/routes/orders"
+import authRouter from "./api/routes/auth"
+import categoriesRouter from "./api/routes/categories"
+import cartRouter from "./api/routes/cart"
+import reviewsRouter from "./api/routes/reviews"
+import vendorsRouter from "./api/routes/vendors"
 import { getElasticsearchService } from "./services/elasticsearch/elasticsearch.service"
 import { getSearchAnalyticsService } from "./services/elasticsearch/search-analytics.service"
+import { AppDataSource } from "./config/database.config"
 
 // Initialize services
 const redisService = new RedisService()
@@ -28,14 +37,37 @@ elasticsearchService.initialize().catch(console.error)
 // Initialize Search Analytics on startup
 searchAnalyticsService.initialize().catch(console.error)
 
+// Initialize Database
+AppDataSource.initialize()
+  .then(() => console.log("📦 Database connected"))
+  .catch((error) => console.error("❌ Database connection failed:", error))
+
 // Initialize Express app
 const app = express()
+app.use(cors())
 app.use(express.json())
 
 // Add caching middleware to specific routes
 app.use("/api/products", cacheMiddleware.productCache())
-app.use("/api/categories", cacheMiddleware.categoryTreeCache())
-app.use("/api/vendors", cacheMiddleware.vendorCache())
+app.use("/api/products", productsRouter)
+
+// Add auth routes
+app.use("/api/auth", authRouter)
+
+// Add order routes
+app.use("/api/orders", ordersRouter)
+
+// Add category routes
+app.use("/api/categories", cacheMiddleware.categoryTreeCache(), categoriesRouter)
+
+// Add vendor routes
+app.use("/api/vendors", cacheMiddleware.vendorCache(), vendorsRouter)
+
+// Add cart routes
+app.use("/api/cart", cartRouter)
+
+// Add review routes
+app.use("/api/reviews", reviewsRouter)
 
 // Add Redis example routes
 app.use("/api/redis", redisExamplesRouter)

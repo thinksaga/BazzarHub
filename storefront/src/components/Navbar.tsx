@@ -2,15 +2,21 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, Search, User, Heart } from 'lucide-react';
+import { ShoppingCart, Search, User, Heart, LogOut } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { items } = useCart();
+  const { user, logout, isAuthenticated } = useAuth();
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // TODO: Implement search functionality
   };
+
+  const cartItemCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
     <nav className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -48,13 +54,29 @@ export default function Navbar() {
             </button>
             <Link href="/cart" className="text-gray-600 hover:text-orange-500 relative">
               <ShoppingCart size={24} />
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                0
-              </span>
+              {cartItemCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {cartItemCount}
+                </span>
+              )}
             </Link>
-            <Link href="/login" className="text-gray-600 hover:text-orange-500">
-              <User size={24} />
-            </Link>
+            
+            {isAuthenticated ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm font-medium text-gray-700">Hi, {user?.firstName}</span>
+                <button 
+                  onClick={logout}
+                  className="text-gray-600 hover:text-orange-500"
+                  title="Logout"
+                >
+                  <LogOut size={24} />
+                </button>
+              </div>
+            ) : (
+              <Link href="/login" className="text-gray-600 hover:text-orange-500">
+                <User size={24} />
+              </Link>
+            )}
           </div>
         </div>
       </div>

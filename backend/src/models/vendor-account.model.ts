@@ -21,7 +21,6 @@ export enum AccountType {
 }
 
 @Entity('vendor_accounts')
-@Index(['vendor_id'], { unique: true })
 @Index(['razorpay_account_id'])
 export class VendorAccount {
   @PrimaryGeneratedColumn('uuid')

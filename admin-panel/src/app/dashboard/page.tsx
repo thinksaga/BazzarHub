@@ -1,0 +1,90 @@
+'use client';
+
+import React from 'react';
+
+export default function AdminDashboardPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Overview</h1>
+      
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Stats Cards */}
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+                <span className="text-white text-2xl">🏪</span>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Total Vendors</dt>
+                  <dd className="text-lg font-medium text-gray-900">0</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
+                <span className="text-white text-2xl">👥</span>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+                  <dd className="text-lg font-medium text-gray-900">0</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-yellow-500 rounded-md p-3">
+                <span className="text-white text-2xl">💰</span>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Total Revenue</dt>
+                  <dd className="text-lg font-medium text-gray-900">₹0.00</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pending Approvals */}
+      <div className="mt-8">
+        <h2 className="text-lg leading-6 font-medium text-gray-900">Pending Vendor Approvals</h2>
+        <div className="mt-4 flex flex-col">
+          <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+              <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor Name</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    <tr>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" colSpan={4}>No pending approvals</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

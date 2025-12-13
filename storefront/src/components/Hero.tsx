@@ -9,7 +9,7 @@ export default function Hero() {
             Welcome to BazaarHub
           </h1>
           <p className="text-xl mb-8 opacity-90">
-            Shop from India's most trusted multivendor marketplace
+            Shop from India&apos;s most trusted multivendor marketplace
           </p>
           <div className="flex justify-center gap-4">
             <button className="bg-white text-orange-500 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100">
