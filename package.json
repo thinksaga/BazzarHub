@@ -1,0 +1,30 @@
+{
+  "name": "bazaarhub-monorepo",
+  "version": "1.0.0",
+  "description": "BazaarHub - Production-ready multivendor marketplace",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "storefront",
+    "vendor-panel",
+    "admin-panel",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd storefront && npm run dev\" \"cd vendor-panel && npm run dev\" \"cd admin-panel && npm run dev\"",
+    "dev:frontend": "concurrently \"cd storefront && npm run dev\" \"cd vendor-panel && npm run dev\" \"cd admin-panel && npm run dev\"",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build --workspaces",
+    "build:storefront": "cd storefront && npm run build",
+    "build:vendor": "cd vendor-panel && npm run build",
+    "build:admin": "cd admin-panel && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "start": "concurrently \"cd backend && npm start\" \"cd storefront && npm start\" \"cd vendor-panel && npm start\" \"cd admin-panel && npm start\"",
+    "lint": "npm run lint --workspaces",
+    "type-check": "npm run type-check --workspaces",
+    "clean": "npm run clean --workspaces && rm -rf .turbo node_modules"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

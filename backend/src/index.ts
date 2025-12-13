@@ -4,15 +4,29 @@ import CacheMiddleware from "./middlewares/cache"
 import NotificationService from "./services/notifications"
 import CacheInvalidationService from "./services/cache-invalidation"
 import redisExamplesRouter from "./api/redis-examples"
+import searchRouter from "./api/search.routes"
+import advancedSearchRouter from "./api/advanced-search.routes"
+import paymentRouter from "./api/payment.routes"
+import vendorPayoutRouter from "./api/vendor-payout.routes"
+import { getElasticsearchService } from "./services/elasticsearch/elasticsearch.service"
+import { getSearchAnalyticsService } from "./services/elasticsearch/search-analytics.service"
 
 // Initialize services
 const redisService = new RedisService()
 const cacheMiddleware = new CacheMiddleware(redisService)
 const notificationService = new NotificationService(redisService)
 const cacheInvalidationService = new CacheInvalidationService(redisService)
+const elasticsearchService = getElasticsearchService()
+const searchAnalyticsService = getSearchAnalyticsService(redisService)
 
 // Connect to Redis on startup
 redisService.connect().catch(console.error)
+
+// Initialize Elasticsearch on startup
+elasticsearchService.initialize().catch(console.error)
+
+// Initialize Search Analytics on startup
+searchAnalyticsService.initialize().catch(console.error)
 
 // Initialize Express app
 const app = express()
@@ -26,13 +40,27 @@ app.use("/api/vendors", cacheMiddleware.vendorCache())
 // Add Redis example routes
 app.use("/api/redis", redisExamplesRouter)
 
-// Health check endpoint with Redis status
+// Add search routes
+app.use("/api/search", searchRouter)
+
+// Add advanced search routes
+app.use("/api/advanced-search", advancedSearchRouter)
+
+// Add payment routes
+app.use("/api/payment", paymentRouter)
+
+// Add vendor payout routes
+app.use("/api/vendor", vendorPayoutRouter)
+
+// Health check endpoint with Redis and Elasticsearch status
 app.get("/health", async (req: express.Request, res: express.Response) => {
   const redisHealth = await redisService.ping()
+  const elasticsearchHealth = await elasticsearchService.healthCheck()
   res.json({
     status: "ok",
     services: {
       redis: redisHealth ? "healthy" : "unhealthy",
+      elasticsearch: elasticsearchHealth ? "healthy" : "unhealthy",
       database: "checking...", // Would need database health check
     },
     timestamp: new Date().toISOString()
@@ -64,7 +92,8 @@ export {
   redisService,
   cacheMiddleware,
   notificationService,
-  cacheInvalidationService
+  cacheInvalidationService,
+  elasticsearchService
 }
 
 // Start the server
@@ -72,9 +101,15 @@ const PORT = process.env.PORT || 3001
 
 app.listen(PORT, async () => {
   const redisConnected = await redisService.ping()
-  console.log(`🚀 MercurJS Backend (Redis Demo) running on port ${PORT}`)
+  const elasticsearchConnected = await elasticsearchService.healthCheck()
+  console.log(`🚀 MercurJS Backend running on port ${PORT}`)
   console.log(`📊 Redis connected: ${redisConnected ? 'Yes' : 'No'}`)
-  console.log(`💾 Cache middleware: Active`)
+  console.log(`� Elasticsearch connected: ${elasticsearchConnected ? 'Yes' : 'No'}`)
+  console.log(` Cache middleware: Active`)
   console.log(`📢 Notifications: Active`)
   console.log(`🔧 Redis examples: http://localhost:${PORT}/api/redis`)
+  console.log(`🔎 Search API: http://localhost:${PORT}/api/search`)
+  console.log(`🔍 Advanced Search: http://localhost:${PORT}/api/advanced-search`)
+  console.log(`💳 Payment API: http://localhost:${PORT}/api/payment`)
+  console.log(`💰 Vendor Payout API: http://localhost:${PORT}/api/vendor`)
 })

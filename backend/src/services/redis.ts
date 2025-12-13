@@ -59,6 +59,19 @@ class RedisService {
     })
   }
 
+  // Get client instance for advanced operations
+  getClient(): Redis {
+    return this.client
+  }
+
+  getSubscriber(): Redis {
+    return this.subscriber
+  }
+
+  getPublisher(): Redis {
+    return this.publisher
+  }
+
   // Connection management
   async connect() {
     if (!this.isConnected) {
@@ -327,11 +340,6 @@ class RedisService {
       console.error("Redis ping error:", error)
       return false
     }
-  }
-
-  // Get client for advanced operations
-  getClient(): Redis {
-    return this.client
   }
 }
 

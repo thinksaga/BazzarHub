@@ -1,0 +1,16 @@
+{
+  "name": "BazaarHub",
+  "short_name": "BazaarHub",
+  "description": "India's Multivendor Marketplace",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#F97316",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
