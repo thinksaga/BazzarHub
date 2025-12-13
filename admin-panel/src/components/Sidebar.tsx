@@ -8,7 +8,9 @@ export default function Sidebar() {
 
   const navigation = [
     { name: 'Overview', href: '/dashboard', icon: '📊' },
+    { name: 'KYC Requests', href: '/dashboard/kyc', icon: '📝' },
     { name: 'Vendors', href: '/dashboard/vendors', icon: '🏪' },
+    { name: 'Reports', href: '/dashboard/reports', icon: '📈' },
     { name: 'Users', href: '/dashboard/users', icon: '👥' },
     { name: 'Settings', href: '/dashboard/settings', icon: '⚙️' },
   ];

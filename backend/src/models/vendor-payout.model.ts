@@ -5,7 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { VendorAccount } from './vendor-account.model';
 
 export enum PayoutStatus {
   PENDING = 'pending',
@@ -33,6 +36,10 @@ export class VendorPayout {
   @Column({ type: 'varchar' })
   @Index()
   vendor_id!: string;
+
+  @ManyToOne(() => VendorAccount)
+  @JoinColumn({ name: 'vendor_id' })
+  vendor!: VendorAccount;
 
   @Column({ type: 'varchar', nullable: true })
   order_id?: string;

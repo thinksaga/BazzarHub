@@ -52,6 +52,24 @@ export class CartService {
     return this.getCart(userId)
   }
 
+  async updateItemQuantity(userId: string, itemId: string, quantity: number) {
+    const cart = await this.getCart(userId)
+    const cartItem = await this.cartItemRepository.findOne({
+      where: { id: itemId, cartId: cart.id }
+    })
+
+    if (!cartItem) throw new Error("Item not found in cart")
+
+    if (quantity <= 0) {
+      await this.cartItemRepository.remove(cartItem)
+    } else {
+      cartItem.quantity = quantity
+      await this.cartItemRepository.save(cartItem)
+    }
+
+    return this.getCart(userId)
+  }
+
   async clearCart(userId: string) {
     const cart = await this.getCart(userId)
     await this.cartItemRepository.delete({ cartId: cart.id })

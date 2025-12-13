@@ -5,7 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  OneToOne,
+  JoinColumn,
 } from 'typeorm';
+import { User } from './user.entity';
 
 export enum VendorAccountStatus {
   PENDING = 'pending',
@@ -29,6 +32,10 @@ export class VendorAccount {
   @Column({ type: 'varchar', unique: true })
   @Index()
   vendor_id!: string;
+
+  @OneToOne(() => User)
+  @JoinColumn({ name: 'vendor_id' })
+  user!: User;
 
   // Bank Account Details
   @Column({ type: 'varchar', length: 50 })

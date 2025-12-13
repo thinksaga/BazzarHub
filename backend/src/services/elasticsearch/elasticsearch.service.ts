@@ -33,6 +33,7 @@ export interface SearchQuery {
   price_min?: number;
   price_max?: number;
   tags?: string[];
+  attributes?: Record<string, string | number | boolean>;
   status?: string;
   page?: number;
   limit?: number;
@@ -440,6 +441,15 @@ export class ElasticsearchService {
     if (searchQuery.tags && searchQuery.tags.length > 0) {
       filterClauses.push({
         terms: { tags: searchQuery.tags },
+      });
+    }
+
+    // Filter by dynamic attributes
+    if (searchQuery.attributes) {
+      Object.entries(searchQuery.attributes).forEach(([key, value]) => {
+        filterClauses.push({
+          term: { [`attributes.${key}`]: value },
+        });
       });
     }
 

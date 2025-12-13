@@ -5,9 +5,10 @@ import { useAuth } from '@/context/AuthContext';
 
 interface Vendor {
   id: string;
-  storeName: string;
+  account_holder_name: string;
   status: string;
-  createdAt: string;
+  created_at: string;
+  gstin?: string;
   user: {
     email: string;
     firstName: string;
@@ -85,6 +86,9 @@ export default function VendorsPage() {
                   Status
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  GSTIN
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Joined
                 </th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -98,17 +102,17 @@ export default function VendorsPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-                        {vendor.storeName ? vendor.storeName.charAt(0).toUpperCase() : 'V'}
+                        {vendor.account_holder_name ? vendor.account_holder_name.charAt(0).toUpperCase() : 'V'}
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{vendor.storeName || 'Unnamed Store'}</div>
+                        <div className="text-sm font-medium text-gray-900">{vendor.account_holder_name || 'Unnamed Store'}</div>
                         <div className="text-sm text-gray-500">{vendor.user?.email}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      vendor.status === 'active' ? 'bg-green-100 text-green-800' : 
+                      vendor.status === 'verified' ? 'bg-green-100 text-green-800' : 
                       vendor.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                       'bg-red-100 text-red-800'
                     }`}>
@@ -116,28 +120,31 @@ export default function VendorsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(vendor.createdAt).toLocaleDateString()}
+                    {vendor.gstin || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(vendor.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     {vendor.status === 'pending' && (
                       <button 
-                        onClick={() => handleStatusUpdate(vendor.id, 'active')}
+                        onClick={() => handleStatusUpdate(vendor.id, 'verified')}
                         className="text-green-600 hover:text-green-900 mr-4"
                       >
                         Approve
                       </button>
                     )}
-                    {vendor.status === 'active' && (
+                    {vendor.status === 'verified' && (
                       <button 
-                        onClick={() => handleStatusUpdate(vendor.id, 'suspended')}
+                        onClick={() => handleStatusUpdate(vendor.id, 'rejected')}
                         className="text-red-600 hover:text-red-900"
                       >
                         Suspend
                       </button>
                     )}
-                    {vendor.status === 'suspended' && (
+                    {vendor.status === 'rejected' && (
                       <button 
-                        onClick={() => handleStatusUpdate(vendor.id, 'active')}
+                        onClick={() => handleStatusUpdate(vendor.id, 'verified')}
                         className="text-green-600 hover:text-green-900"
                       >
                         Reactivate

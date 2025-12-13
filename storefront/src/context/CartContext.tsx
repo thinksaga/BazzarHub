@@ -19,6 +19,7 @@ interface CartContextType {
   items: CartItem[];
   addToCart: (productId: string, quantity?: number) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
+  updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   loading: boolean;
 }
 
@@ -26,6 +27,7 @@ const CartContext = createContext<CartContextType>({
   items: [],
   addToCart: async () => {},
   removeFromCart: async () => {},
+  updateQuantity: async () => {},
   loading: false,
 });
 
@@ -101,8 +103,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateQuantity = async (itemId: string, quantity: number) => {
+    try {
+      const res = await fetch(`http://localhost:5004/api/cart/items/${itemId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ quantity }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items || []);
+      }
+    } catch (error) {
+      console.error('Failed to update quantity', error);
+    }
+  };
+
   return (
-    <CartContext.Provider value={{ items, addToCart, removeFromCart, loading }}>
+    <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQuantity, loading }}>
       {children}
     </CartContext.Provider>
   );

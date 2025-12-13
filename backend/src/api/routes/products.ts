@@ -7,9 +7,14 @@ const productService = new ProductService()
 
 router.post("/", authMiddleware, async (req: Request, res: Response) => {
   try {
-    const product = await productService.create(req.body)
+    const productData = {
+      ...req.body,
+      vendorId: (req as any).user.id
+    }
+    const product = await productService.create(productData)
     res.status(201).json(product)
   } catch (error) {
+    console.error("Create product error:", error)
     res.status(500).json({ error: "Failed to create product" })
   }
 })

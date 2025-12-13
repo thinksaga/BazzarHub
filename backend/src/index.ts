@@ -9,6 +9,7 @@ import searchRouter from "./api/search.routes"
 import advancedSearchRouter from "./api/advanced-search.routes"
 import paymentRouter from "./api/payment.routes"
 import vendorPayoutRouter from "./api/vendor-payout.routes"
+import payoutsRouter from "./api/routes/payouts"
 import productsRouter from "./api/routes/products"
 import ordersRouter from "./api/routes/orders"
 import authRouter from "./api/routes/auth"
@@ -16,6 +17,9 @@ import categoriesRouter from "./api/routes/categories"
 import cartRouter from "./api/routes/cart"
 import reviewsRouter from "./api/routes/reviews"
 import vendorsRouter from "./api/routes/vendors"
+import vendorOnboardingRouter from "./api/routes/vendor-onboarding"
+import adminFinanceRouter from "./api/routes/admin/finance"
+import adminGstRouter from "./api/routes/admin/gst"
 import { getElasticsearchService } from "./services/elasticsearch/elasticsearch.service"
 import { getSearchAnalyticsService } from "./services/elasticsearch/search-analytics.service"
 import { AppDataSource } from "./config/database.config"
@@ -63,6 +67,9 @@ app.use("/api/categories", cacheMiddleware.categoryTreeCache(), categoriesRouter
 // Add vendor routes
 app.use("/api/vendors", cacheMiddleware.vendorCache(), vendorsRouter)
 
+// Add vendor onboarding routes
+app.use("/api/vendor/onboarding", vendorOnboardingRouter)
+
 // Add cart routes
 app.use("/api/cart", cartRouter)
 
@@ -83,6 +90,15 @@ app.use("/api/payment", paymentRouter)
 
 // Add vendor payout routes
 app.use("/api/vendor", vendorPayoutRouter)
+
+// Add payout history routes
+app.use("/api/payouts", payoutsRouter)
+
+// Add admin finance routes
+app.use("/api/admin/finance", adminFinanceRouter)
+
+// Add admin GST routes
+app.use("/api/admin/gst", adminGstRouter)
 
 // Health check endpoint with Redis and Elasticsearch status
 app.get("/health", async (req: express.Request, res: express.Response) => {

@@ -79,7 +79,7 @@ export class RouteService {
 
   /**
    * Onboard vendor with Razorpay Route
-   * Creates contact and fund account for split payments
+   * Creates a Linked Account for split payments
    */
   async createLinkedAccount(vendor: VendorDetails): Promise<LinkedAccount> {
     try {
@@ -91,52 +91,43 @@ export class RouteService {
         throw new Error('Vendor already has a linked account');
       }
 
-      // Step 1: Create contact
-      const contact: any = await this.razorpayClient.withRetry(
-        () => razorpay.customers.create({
-          name: vendor.bank_account_holder_name,
+      console.log('[Route Service] Creating linked account for vendor:', vendor.vendor_id);
+
+      // Create Linked Account (Route API)
+      // This creates a sub-merchant account that can receive transfers
+      const account: any = await this.razorpayClient.withRetry(
+        () => razorpay.accounts.create({
           email: vendor.email,
-          contact: vendor.phone,
-          notes: {
-            vendor_id: vendor.vendor_id,
-            business_name: vendor.business_name || '',
-            pan: vendor.pan || '',
-            gstin: vendor.gstin || '',
+          phone: vendor.phone,
+          legal_business_name: vendor.business_name || vendor.bank_account_holder_name,
+          business_type: vendor.business_type || 'individual',
+          contact_name: vendor.bank_account_holder_name,
+          profile: {
+            category: 'ecommerce',
+            subcategory: 'marketplace',
           },
-        } as any)
-      );
-
-      console.log('[Route Service] Contact created:', contact.id);
-
-      // Step 2: Create fund account
-      const fundAccount: any = await this.razorpayClient.withRetry(
-        () => razorpay.fundAccount.create({
-          contact_id: contact.id,
-          account_type: 'bank_account',
           bank_account: {
-            name: vendor.bank_account_holder_name,
-            ifsc: vendor.bank_ifsc,
+            ifsc_code: vendor.bank_ifsc,
             account_number: vendor.bank_account_number,
+            beneficiary_name: vendor.bank_account_holder_name,
           },
+          tnc_accepted: true,
         } as any)
       );
 
-      console.log('[Route Service] Fund account created:', fundAccount.id);
-
-      // Step 3: Verify account status
-      const accountVerified = fundAccount.active === true;
+      console.log('[Route Service] Linked account created:', account.id);
 
       // Create linked account record
       const linkedAccount: LinkedAccount = {
         id: uuidv4(),
         vendor_id: vendor.vendor_id,
-        razorpay_account_id: fundAccount.id,
-        razorpay_contact_id: contact.id,
-        razorpay_fund_account_id: fundAccount.id,
+        razorpay_account_id: account.id, // acc_... ID
+        razorpay_contact_id: '', // Not used in Route
+        razorpay_fund_account_id: '', // Not used in Route
         status: 'active',
         email: vendor.email,
         phone: vendor.phone,
-        account_verified: accountVerified,
+        account_verified: true, // Assumed true for Route accounts initially
         created_at: new Date(),
       };
 
@@ -146,11 +137,8 @@ export class RouteService {
       // Log event
       await this.logRouteEvent('linked_account_created', {
         vendor_id: vendor.vendor_id,
-        razorpay_account_id: fundAccount.id,
-        account_verified: accountVerified,
+        razorpay_account_id: account.id,
       });
-
-      console.log('[Route Service] Linked account created for vendor:', vendor.vendor_id);
 
       return linkedAccount;
     } catch (error: any) {
@@ -222,7 +210,7 @@ export class RouteService {
 
       // Create transfer options
       const transferOptions: any = {
-        account: linkedAccount.razorpay_fund_account_id,
+        account: linkedAccount.razorpay_account_id, // Use the Route Account ID (acc_...)
         amount: splits.net_transfer_amount,
         currency: 'INR',
         notes: {

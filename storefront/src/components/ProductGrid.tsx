@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 
 interface Product {
@@ -46,17 +47,21 @@ export default function ProductGrid() {
           key={product.id}
           className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
         >
-          <div className="bg-gray-100 h-48 flex items-center justify-center text-4xl">
-            {product.images && product.images[0] ? (
-               <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
-            ) : (
-               '📦'
-            )}
-          </div>
+          <Link href={`/product/${product.id}`}>
+            <div className="bg-gray-100 h-48 flex items-center justify-center text-4xl cursor-pointer">
+              {product.images && product.images[0] ? (
+                <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
+              ) : (
+                '📦'
+              )}
+            </div>
+          </Link>
           <div className="p-4">
-            <h3 className="font-semibold text-gray-900 text-lg mb-1 line-clamp-1">
-              {product.title}
-            </h3>
+            <Link href={`/product/${product.id}`}>
+              <h3 className="font-semibold text-gray-900 text-lg mb-1 line-clamp-1 hover:text-indigo-600 cursor-pointer">
+                {product.title}
+              </h3>
+            </Link>
             <p className="text-gray-500 text-sm mb-2 line-clamp-2">
               {product.description}
             </p>

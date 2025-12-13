@@ -7,6 +7,7 @@ export class VendorAccountService {
   async findAll(query: any = {}) {
     return this.vendorAccountRepository.find({
       where: query,
+      relations: ["user"],
       order: {
         created_at: "DESC"
       }
@@ -14,7 +15,10 @@ export class VendorAccountService {
   }
 
   async findOne(id: string) {
-    return this.vendorAccountRepository.findOne({ where: { id } })
+    return this.vendorAccountRepository.findOne({ 
+      where: { id },
+      relations: ["user"]
+    })
   }
 
   async create(data: Partial<VendorAccount>) {
@@ -30,5 +34,12 @@ export class VendorAccountService {
   async updateStatus(id: string, status: VendorAccountStatus) {
     await this.vendorAccountRepository.update(id, { status })
     return this.findOne(id)
+  }
+
+  async findByUserId(userId: string) {
+    return this.vendorAccountRepository.findOne({
+      where: { vendor_id: userId },
+      relations: ["user"]
+    })
   }
 }

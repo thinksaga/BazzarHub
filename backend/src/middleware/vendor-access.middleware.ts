@@ -4,17 +4,18 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { VendorAccountService } from '../services/vendor-account.service';
+import { VendorAccountStatus } from '../models/vendor-account.model';
 
 interface VendorRequest extends Request {
+  user?: any;
+  vendor?: any;
   vendor_id?: string;
   kyc_status?: string;
   kyc_verified?: boolean;
 }
 
-// Mock Redis client
-const redisClientMock = {
-  get: async (key: string) => null,
-};
+const vendorAccountService = new VendorAccountService();
 
 /**
  * Middleware: Require verified vendor
@@ -26,42 +27,39 @@ export const requireVerifiedVendor = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Get vendor ID from JWT or session (mock implementation)
-    const vendor_id = (req.headers as any)['x-vendor-id'];
+    const userId = req.user?.id;
 
-    if (!vendor_id) {
+    if (!userId) {
       res.status(401).json({
-        error: 'Vendor ID not found',
-        required: 'x-vendor-id header',
+        error: 'Authentication required',
       });
       return;
     }
 
-    // Get vendor KYC status
-    const kycJson = await redisClientMock.get(`kyc:${vendor_id}`);
+    // Get vendor account
+    const vendor = await vendorAccountService.findByUserId(userId);
 
-    if (!kycJson) {
+    if (!vendor) {
       res.status(403).json({
-        error: 'KYC not found',
-        message: 'Please submit KYC documents to proceed',
-        next_step: 'kyc_submission',
+        error: 'Vendor account not found',
+        message: 'Please complete vendor registration',
+        next_step: 'vendor_registration',
       });
       return;
     }
 
-    const kycData = JSON.parse(kycJson);
-
-    // Attach KYC info to request
-    req.vendor_id = vendor_id;
-    req.kyc_status = kycData.verification_status;
-    req.kyc_verified = kycData.verification_status === 'verified';
+    // Attach vendor info to request
+    req.vendor = vendor;
+    req.vendor_id = vendor.id;
+    req.kyc_status = vendor.status;
+    req.kyc_verified = vendor.status === VendorAccountStatus.VERIFIED;
 
     // Check verification status
-    if (kycData.verification_status === 'pending') {
+    if (vendor.status === VendorAccountStatus.PENDING || vendor.status === VendorAccountStatus.UNDER_REVIEW) {
       res.status(403).json({
         error: 'KYC verification pending',
         message: 'Your KYC is under review. You will be notified once verified.',
-        status: 'pending',
+        status: vendor.status,
         banner: {
           type: 'warning',
           text: 'Your account verification is in progress',
@@ -70,26 +68,11 @@ export const requireVerifiedVendor = async (
       return;
     }
 
-    if (kycData.verification_status === 'pending_correction') {
-      res.status(403).json({
-        error: 'KYC corrections required',
-        message: 'Please resubmit KYC with required corrections',
-        status: 'pending_correction',
-        corrections_required: kycData.corrections_required || [],
-        banner: {
-          type: 'error',
-          text: 'KYC corrections required. Please resubmit.',
-        },
-      });
-      return;
-    }
-
-    if (kycData.verification_status === 'rejected') {
+    if (vendor.status === VendorAccountStatus.REJECTED) {
       res.status(403).json({
         error: 'KYC rejected',
         message: 'Your KYC submission was rejected',
-        rejection_reason: kycData.rejection_reason,
-        status: 'rejected',
+        status: vendor.status,
         banner: {
           type: 'error',
           text: 'KYC was rejected. Contact support for details.',
@@ -98,7 +81,20 @@ export const requireVerifiedVendor = async (
       return;
     }
 
-    if (kycData.verification_status === 'verified') {
+    if (vendor.status === VendorAccountStatus.SUSPENDED) {
+      res.status(403).json({
+        error: 'Account suspended',
+        message: 'Your account has been suspended',
+        status: vendor.status,
+        banner: {
+          type: 'error',
+          text: 'Account suspended.',
+        },
+      });
+      return;
+    }
+
+    if (vendor.status === VendorAccountStatus.VERIFIED) {
       // All good, proceed
       next();
       return;
@@ -107,7 +103,7 @@ export const requireVerifiedVendor = async (
     // Unknown status
     res.status(403).json({
       error: 'Invalid KYC status',
-      status: kycData.verification_status,
+      status: vendor.status,
     });
   } catch (error) {
     console.error('[VENDOR/ACCESS] KYC verification check failed', error);
@@ -128,38 +124,36 @@ export const attachKYCStatus = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const vendor_id = (req.headers as any)['x-vendor-id'];
+    const userId = req.user?.id;
 
-    if (!vendor_id) {
+    if (!userId) {
       next();
       return;
     }
 
-    // Get vendor KYC status
-    const kycJson = await redisClientMock.get(`kyc:${vendor_id}`);
+    const vendor = await vendorAccountService.findByUserId(userId);
 
-    if (!kycJson) {
+    if (!vendor) {
       next();
       return;
     }
-
-    const kycData = JSON.parse(kycJson);
 
     // Attach to request
-    req.vendor_id = vendor_id;
-    req.kyc_status = kycData.verification_status;
-    req.kyc_verified = kycData.verification_status === 'verified';
+    req.vendor = vendor;
+    req.vendor_id = vendor.id;
+    req.kyc_status = vendor.status;
+    req.kyc_verified = vendor.status === VendorAccountStatus.VERIFIED;
 
     // Add banner to response
     const originalJson = res.json.bind(res);
     res.json = function (body: any) {
-      if (kycData.verification_status !== 'verified') {
+      if (vendor.status !== VendorAccountStatus.VERIFIED) {
         body.kyc_banner = {
           visible: true,
-          type: kycData.verification_status === 'pending' ? 'warning' : 'error',
-          text: kycData.verification_status === 'pending'
+          type: (vendor.status === VendorAccountStatus.PENDING || vendor.status === VendorAccountStatus.UNDER_REVIEW) ? 'warning' : 'error',
+          text: (vendor.status === VendorAccountStatus.PENDING || vendor.status === VendorAccountStatus.UNDER_REVIEW)
             ? 'Your account verification is in progress'
-            : 'KYC corrections required. Please resubmit.',
+            : 'Account issue. Please check status.',
           action_url: '/vendor/kyc/resubmit',
         };
       }
@@ -183,7 +177,7 @@ export const verifyVendorOwnership = (
   next: NextFunction
 ): void => {
   try {
-    const vendor_id = (req.headers as any)['x-vendor-id'];
+    const vendor_id = req.vendor_id; // Set by requireVerifiedVendor or attachKYCStatus
     const resource_vendor_id = req.params.vendor_id || req.body.vendor_id;
 
     if (!vendor_id) {
@@ -191,7 +185,7 @@ export const verifyVendorOwnership = (
       return;
     }
 
-    if (vendor_id !== resource_vendor_id) {
+    if (resource_vendor_id && vendor_id !== resource_vendor_id) {
       res.status(403).json({
         error: 'Vendor cannot access this resource',
         message: 'You do not have permission to access this vendor data',

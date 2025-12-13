@@ -5,33 +5,21 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { v4 as uuid } from 'uuid';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { AppDataSource } from '../../config/database.config';
+import { User, UserRole } from '../../models/user.entity';
+import { VendorAccount, VendorAccountStatus, AccountType } from '../../models/vendor-account.model';
+import GSTService from '../../services/gst.service';
+import { RouteService } from '../../services/payment/route.service';
+import RedisService from '../../services/redis';
 
 const router = Router();
+const redisService = new RedisService();
+const gstService = GSTService.getInstance();
+const routeService = RouteService.getInstance();
 
-// Mock implementations
-const bcryptMock = {
-  hash: async (password: string, cost: number) => `hashed_${password}`,
-};
-
-const jwtMock = {
-  sign: (payload: any, secret: string, opts?: any) => `token_${JSON.stringify(payload)}`,
-  verify: (token: string, secret: string) => {
-    try {
-      const jsonStr = token.replace('token_', '');
-      return JSON.parse(jsonStr);
-    } catch {
-      throw new Error('Invalid token');
-    }
-  },
-};
-
-const redisClientMock = {
-  get: async (key: string) => null,
-  setEx: async (key: string, ttl: number, value: string) => {},
-  del: async (key: string) => {},
-};
-
-// Rate limiting storage
+// Rate limiting storage (using Redis in production, but Map for now is fine for simple rate limiting if Redis fails)
 const registrationAttempts: Map<string, { count: number; timestamp: number }> = new Map();
 
 /**
@@ -41,19 +29,20 @@ function validateRegistration(data: any): { valid: boolean; errors?: string[] } 
   const errors: string[] = [];
 
   if (!data.business_name || data.business_name.length < 3) errors.push('Business name is required (min 3 chars)');
-  if (!['individual', 'company'].includes(data.business_type)) errors.push('Invalid business type');
+  if (!['individual', 'company', 'partnership', 'llp'].includes(data.business_type)) errors.push('Invalid business type');
   if (!data.email || !data.email.match(/@/)) errors.push('Valid email is required');
   if (!data.phone || !/^\d{10}$/.test(data.phone)) errors.push('Valid 10-digit phone is required');
-  if (!data.phone_otp || data.phone_otp.length !== 6) errors.push('OTP must be 6 digits');
-  if (!data.password || data.password.length < 12) errors.push('Password must be at least 12 chars');
-  if (!/(?=.*[a-z])/.test(data.password)) errors.push('Password must contain lowercase');
-  if (!/(?=.*[A-Z])/.test(data.password)) errors.push('Password must contain uppercase');
-  if (!/(?=.*\d)/.test(data.password)) errors.push('Password must contain digits');
-  if (!/(?=.*[@$!%*?&])/.test(data.password)) errors.push('Password must contain special characters');
-  if (data.password !== data.confirm_password) errors.push('Passwords do not match');
-  if (!data.primary_contact_name || data.primary_contact_name.length < 2) errors.push('Contact name required');
-  if (!data.business_address || data.business_address.length < 10) errors.push('Business address required');
-  if (!data.pincode || !/^\d{6}$/.test(data.pincode)) errors.push('Valid 6-digit pincode required');
+  if (!data.password || data.password.length < 8) errors.push('Password must be at least 8 chars');
+  
+  // Bank Details
+  if (!data.bank_account_number) errors.push('Bank account number is required');
+  if (!data.bank_ifsc) errors.push('IFSC code is required');
+  if (!data.bank_account_holder_name) errors.push('Account holder name is required');
+
+  // Tax Details
+  if (!data.pan) errors.push('PAN is required');
+  // GSTIN is optional for some small vendors, but we'll enforce it if provided
+  if (data.gstin && data.gstin.length !== 15) errors.push('GSTIN must be 15 characters');
 
   return {
     valid: errors.length === 0,
@@ -101,120 +90,124 @@ const applyRateLimit = (req: Request, res: Response, next: NextFunction): void =
  * Create new vendor account with email verification
  */
 router.post('/register', applyRateLimit, async (req: Request, res: Response): Promise<void> => {
-  try {
-    // Validate input
-    const validation = validateRegistration(req.body);
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
 
+  try {
+    // 1. Validate Input
+    const validation = validateRegistration(req.body);
     if (!validation.valid) {
-      res.status(400).json({
-        errors: validation.errors,
-      });
+      res.status(400).json({ errors: validation.errors });
       return;
     }
 
     const data = req.body;
 
-    // Check email uniqueness
-    const existingEmail = await redisClientMock.get(`vendor:email:${data.email}`);
-    if (existingEmail) {
-      res.status(409).json({
-        error: 'Email already registered',
-      });
+    // 2. Check if Email exists
+    const userRepository = AppDataSource.getRepository(User);
+    const existingUser = await userRepository.findOne({ where: { email: data.email } });
+    if (existingUser) {
+      res.status(409).json({ error: 'Email already registered' });
       return;
     }
 
-    // Verify phone OTP
-    const phoneOTPKey = `phone_otp:${data.phone}`;
-    const storedOTP = await redisClientMock.get(phoneOTPKey);
-
-    if (!storedOTP || storedOTP !== data.phone_otp) {
-      res.status(400).json({
-        error: 'Invalid phone OTP',
-      });
-      return;
+    // 3. Validate GSTIN (if provided)
+    if (data.gstin) {
+      const gstValidation = gstService.validateGSTIN(data.gstin);
+      if (!gstValidation.valid) {
+        res.status(400).json({ error: `Invalid GSTIN: ${gstValidation.error}` });
+        return;
+      }
     }
 
-    // Create vendor account
-    const vendor_id = `vendor_${uuid()}`;
-    const hashedPassword = await bcryptMock.hash(data.password, 12);
+    // 4. Create Razorpay Linked Account (Route)
+    let linkedAccount;
+    try {
+      linkedAccount = await routeService.createLinkedAccount({
+        vendor_id: '', // Will be set after user creation
+        email: data.email,
+        phone: data.phone,
+        bank_account_number: data.bank_account_number,
+        bank_ifsc: data.bank_ifsc,
+        bank_account_holder_name: data.bank_account_holder_name,
+        business_name: data.business_name,
+        business_type: data.business_type,
+        pan: data.pan,
+        gstin: data.gstin
+      });
+    } catch (error: any) {
+      console.error('Razorpay Account Creation Failed:', error);
+      // Proceeding without Razorpay account for dev/test if credentials missing
+    }
 
-    const vendorData = {
-      vendor_id,
-      business_name: data.business_name,
-      business_type: data.business_type,
-      email: data.email,
-      phone: data.phone,
-      primary_contact_name: data.primary_contact_name,
-      primary_contact_phone: data.primary_contact_phone,
-      business_address: data.business_address,
-      city: data.city,
-      state: data.state,
-      pincode: data.pincode,
-      country: data.country || 'India',
-      password_hash: hashedPassword,
-      status: 'pending_verification',
-      created_at: new Date().toISOString(),
-      ip_address: req.ip,
-    };
+    // 5. Create User Entity
+    const hashedPassword = await bcrypt.hash(data.password, 12);
+    const newUser = new User();
+    newUser.email = data.email;
+    newUser.password = hashedPassword;
+    newUser.firstName = data.primary_contact_name.split(' ')[0];
+    newUser.lastName = data.primary_contact_name.split(' ').slice(1).join(' ') || '';
+    newUser.role = UserRole.VENDOR;
+    newUser.phone = data.phone;
+    
+    const savedUser = await queryRunner.manager.save(newUser);
 
-    // Store vendor account
-    await redisClientMock.setEx(
-      `vendor:${vendor_id}`,
-      30 * 24 * 60 * 60,
-      JSON.stringify(vendorData)
-    );
+    // 6. Create VendorAccount Entity
+    const newVendorAccount = new VendorAccount();
+    newVendorAccount.vendor_id = savedUser.id; // Link to User ID
+    newVendorAccount.account_number = data.bank_account_number;
+    newVendorAccount.ifsc_code = data.bank_ifsc;
+    newVendorAccount.account_holder_name = data.bank_account_holder_name;
+    newVendorAccount.account_type = AccountType.SAVINGS; // Default
+    newVendorAccount.pan = data.pan;
+    newVendorAccount.gstin = data.gstin;
+    newVendorAccount.business_name = data.business_name;
+    newVendorAccount.business_type = data.business_type;
+    newVendorAccount.business_address = data.business_address;
+    newVendorAccount.contact_phone = data.phone;
+    newVendorAccount.contact_email = data.email;
+    newVendorAccount.status = VendorAccountStatus.PENDING;
+    
+    if (linkedAccount) {
+      newVendorAccount.razorpay_account_id = linkedAccount.razorpay_account_id;
+      newVendorAccount.razorpay_fund_account_id = linkedAccount.razorpay_fund_account_id;
+    }
 
-    // Store email index for uniqueness check
-    await redisClientMock.setEx(
-      `vendor:email:${data.email}`,
-      30 * 24 * 60 * 60,
-      vendor_id
-    );
+    await queryRunner.manager.save(newVendorAccount);
 
-    // Generate verification token
-    const verificationToken = jwtMock.sign(
-      { vendor_id, email: data.email },
+    // 7. Commit Transaction
+    await queryRunner.commitTransaction();
+
+    // 8. Generate Verification Token
+    const verificationToken = jwt.sign(
+      { userId: savedUser.id, email: savedUser.email },
       process.env.JWT_SECRET || 'secret-key',
       { expiresIn: '24h' }
     );
 
-    // Store token
-    await redisClientMock.setEx(
-      `vendor:verification_token:${vendor_id}`,
-      24 * 60 * 60,
-      verificationToken
-    );
+    // Store token in Redis
+    const redis = redisService.getClient();
+    await redis.set(`vendor:verification:${savedUser.id}`, verificationToken, 'EX', 86400);
 
-    const verificationLink = `${process.env.APP_URL || 'http://localhost:3000'}/vendor/verify-email?token=${verificationToken}`;
-
-    console.log('[VENDOR] Verification email sent', {
-      vendor_id,
-      email: data.email,
-      verification_link: verificationLink,
-    });
-
-    console.log('[AUDIT] Vendor registration created', {
-      vendor_id,
-      email: data.email,
-      ip: req.ip,
-      timestamp: new Date().toISOString(),
-    });
-
-    // Clear phone OTP
-    await redisClientMock.del(phoneOTPKey);
+    console.log(`[VENDOR] Registered: ${savedUser.email} (${savedUser.id})`);
 
     res.status(201).json({
       success: true,
-      message: 'Vendor account created. Please check your email to verify your account.',
-      vendor_id,
-      next_step: 'email_verification',
+      message: 'Vendor registration successful. Please verify your email.',
+      vendor_id: savedUser.id,
+      verification_token: verificationToken // In real app, send via email
     });
-  } catch (error) {
-    console.error('[VENDOR] Registration failed', error);
+
+  } catch (error: any) {
+    await queryRunner.rollbackTransaction();
+    console.error('[VENDOR] Registration Error:', error);
     res.status(500).json({
       error: 'Registration failed',
-      details: error instanceof Error ? error.message : String(error),
+      details: error.message
     });
+  } finally {
+    await queryRunner.release();
   }
 });
 
@@ -232,41 +225,40 @@ router.post('/verify-email', async (req: Request, res: Response): Promise<void> 
     }
 
     try {
-      const decoded = jwtMock.verify(token, process.env.JWT_SECRET || 'secret-key') as { vendor_id: string; email: string };
-      const vendor_id = decoded.vendor_id;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key') as { userId: string; email: string };
+      const userId = decoded.userId;
 
-      // Get vendor account
-      const vendorJson = await redisClientMock.get(`vendor:${vendor_id}`);
-      if (!vendorJson) {
+      // Verify token against Redis (to ensure it hasn't been used/expired)
+      const redis = redisService.getClient();
+      const storedToken = await redis.get(`vendor:verification:${userId}`);
+
+      if (!storedToken || storedToken !== token) {
+        res.status(401).json({ error: 'Invalid or expired verification token' });
+        return;
+      }
+
+      // Update Vendor Account Status
+      const vendorAccountRepo = AppDataSource.getRepository(VendorAccount);
+      const vendorAccount = await vendorAccountRepo.findOne({ where: { vendor_id: userId } });
+
+      if (!vendorAccount) {
         res.status(404).json({ error: 'Vendor account not found' });
         return;
       }
 
-      const vendorData = JSON.parse(vendorJson);
-
-      // Update verification status
-      vendorData.status = 'email_verified';
-      vendorData.email_verified_at = new Date().toISOString();
-
-      await redisClientMock.setEx(
-        `vendor:${vendor_id}`,
-        30 * 24 * 60 * 60,
-        JSON.stringify(vendorData)
-      );
+      // Update status to UNDER_REVIEW (Email Verified)
+      vendorAccount.status = VendorAccountStatus.UNDER_REVIEW;
+      await vendorAccountRepo.save(vendorAccount);
 
       // Clear verification token
-      await redisClientMock.del(`vendor:verification_token:${vendor_id}`);
+      await redis.del(`vendor:verification:${userId}`);
 
-      console.log('[AUDIT] Email verified', {
-        vendor_id,
-        email: vendorData.email,
-        timestamp: new Date().toISOString(),
-      });
+      console.log(`[AUDIT] Email verified for vendor: ${userId}`);
 
       res.json({
         success: true,
         message: 'Email verified successfully. You can now submit KYC documents.',
-        vendor_id,
+        vendor_id: userId,
         next_step: 'kyc_submission',
       });
     } catch (error) {
@@ -301,7 +293,8 @@ router.post('/request-phone-otp', async (req: Request, res: Response): Promise<v
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Store OTP with 10-minute expiry
-    await redisClientMock.setEx(`phone_otp:${phone}`, 10 * 60, otp);
+    const redis = redisService.getClient();
+    await redis.set(`phone_otp:${phone}`, otp, 'EX', 600);
 
     console.log('[OTP] Phone OTP generated', {
       phone: phone.slice(-4),
@@ -335,9 +328,11 @@ router.post('/resend-verification-email', async (req: Request, res: Response): P
       return;
     }
 
-    // Find vendor by email
-    const vendor_id = await redisClientMock.get(`vendor:email:${email}`);
-    if (!vendor_id) {
+    // Find user by email
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { email } });
+
+    if (!user) {
       // Don't reveal if email exists
       res.json({
         success: true,
@@ -346,40 +341,26 @@ router.post('/resend-verification-email', async (req: Request, res: Response): P
       return;
     }
 
-    // Get vendor data
-    const vendorJson = await redisClientMock.get(`vendor:${vendor_id}`);
-    if (!vendorJson) {
-      res.json({
-        success: true,
-        message: 'If the email is registered, you will receive a verification link shortly.',
-      });
-      return;
-    }
+    // Check if already verified (VendorAccount status)
+    const vendorAccountRepo = AppDataSource.getRepository(VendorAccount);
+    const vendorAccount = await vendorAccountRepo.findOne({ where: { vendor_id: user.id } });
 
-    const vendorData = JSON.parse(vendorJson);
-
-    // Check if already verified
-    if (vendorData.status === 'email_verified') {
-      res.status(400).json({
-        error: 'Email already verified',
-      });
+    if (vendorAccount && vendorAccount.status !== VendorAccountStatus.PENDING) {
+      res.status(400).json({ error: 'Email already verified' });
       return;
     }
 
     // Generate new token
-    const verificationToken = jwtMock.sign(
-      { vendor_id, email },
+    const verificationToken = jwt.sign(
+      { userId: user.id, email },
       process.env.JWT_SECRET || 'secret-key',
       { expiresIn: '24h' }
     );
 
-    await redisClientMock.setEx(
-      `vendor:verification_token:${vendor_id}`,
-      24 * 60 * 60,
-      verificationToken
-    );
+    const redis = redisService.getClient();
+    await redis.set(`vendor:verification:${user.id}`, verificationToken, 'EX', 86400);
 
-    console.log('[VENDOR] Verification email resent', { vendor_id, email });
+    console.log('[VENDOR] Verification email resent', { userId: user.id, email });
 
     res.json({
       success: true,

@@ -28,6 +28,17 @@ router.post("/items", async (req: Request, res: Response) => {
   }
 })
 
+router.put("/items/:id", async (req: Request, res: Response) => {
+  try {
+    const { quantity } = req.body
+    // @ts-ignore
+    const cart = await cartService.updateItemQuantity(req.user.id, req.params.id, quantity)
+    res.json(cart)
+  } catch (error: any) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 router.delete("/items/:id", async (req: Request, res: Response) => {
   try {
     // @ts-ignore

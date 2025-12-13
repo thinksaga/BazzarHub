@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ShoppingCart, Search, User, Heart, LogOut } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -10,10 +11,13 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const { items } = useCart();
   const { user, logout, isAuthenticated } = useAuth();
+  const router = useRouter();
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // TODO: Implement search functionality
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
   };
 
   const cartItemCount = items.reduce((acc, item) => acc + item.quantity, 0);
@@ -63,7 +67,9 @@ export default function Navbar() {
             
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
-                <span className="text-sm font-medium text-gray-700">Hi, {user?.firstName}</span>
+                <Link href="/account/orders" className="text-sm font-medium text-gray-700 hover:text-orange-500">
+                  Hi, {user?.firstName}
+                </Link>
                 <button 
                   onClick={logout}
                   className="text-gray-600 hover:text-orange-500"
