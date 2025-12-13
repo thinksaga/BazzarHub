@@ -7,7 +7,7 @@ interface Order {
   totalAmount: number;
   status: string;
   createdAt: string;
-  items: any[];
+  items: unknown[];
 }
 
 export default function OrdersPage() {
