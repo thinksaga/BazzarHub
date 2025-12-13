@@ -88,10 +88,6 @@ export default function OrdersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     ₹{order.totalAmount}
                   </td>
-import Link from 'next/link';
-
-// ...existing code...
-
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <Link href={`/dashboard/orders/${order.id}`} className="text-indigo-600 hover:text-indigo-900">
                       View Details

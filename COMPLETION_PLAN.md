@@ -81,11 +81,15 @@ Based on the project documentation (`PROJECT_STRUCTURE.md`, `GST_COMPLIANCE_DOCU
 **Goal:** System-wide testing and production readiness.
 
 1.  **End-to-End Testing**
-    *   [ ] Test full flow: Vendor Register -> Admin Approve -> Vendor List Item -> Customer Search -> Customer Buy -> Vendor Ship -> Vendor Payout.
+    *   [x] Created `E2E_TESTING_GUIDE.md` with manual test scenarios.
+    *   [x] Created `scripts/test-health.sh` for quick health checks.
+    *   [ ] Execute full flow: Vendor Register -> Admin Approve -> Vendor List Item -> Customer Search -> Customer Buy -> Vendor Ship -> Vendor Payout.
 
 2.  **Infrastructure**
-    *   [ ] Set up `docker-compose.yml` for all services (Postgres, Redis, Elasticsearch, Backend, Frontends).
-    *   [ ] Configure Nginx as a reverse proxy (if needed for local dev simulation or production).
+    *   [x] Set up `docker-compose.yml` for all services (Postgres, Redis, Elasticsearch, Backend, Frontends).
+    *   [x] Configure Nginx as a reverse proxy (created `nginx/nginx.conf` and `nginx/conf.d/default.conf`).
+    *   [x] Updated Dockerfiles for multi-stage production builds.
 
 ## Immediate Next Steps
-1.  **Phase 5:** Start End-to-End Testing.
+1.  **Deployment:** Run `docker-compose up --build` to start the full stack.
+2.  **Testing:** Follow `E2E_TESTING_GUIDE.md` to verify the application.

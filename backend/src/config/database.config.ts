@@ -1,6 +1,7 @@
 import { DataSource } from "typeorm"
 import { Product } from "@/models/product.entity"
 import { Order } from "@/models/order.entity"
+import { OrderItem } from "@/models/order-item.entity"
 import { VendorAccount } from "@/models/vendor-account.model"
 import { VendorPayout } from "@/models/vendor-payout.model"
 import { User } from "@/models/user.entity"
@@ -21,7 +22,8 @@ export const AppDataSource = new DataSource({
   entities: [
     Product, 
     Order, 
-    VendorAccount, 
+    OrderItem,
+    VendorAccount,  
     VendorPayout,
     User,
     Category,

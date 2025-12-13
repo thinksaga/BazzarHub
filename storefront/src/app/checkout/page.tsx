@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Razorpay: any;
   }
 }
@@ -84,6 +85,7 @@ export default function CheckoutPage() {
         name: "BazaarHub",
         description: "Order Payment",
         order_id: paymentData.data.order_id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handler: async function (response: any) {
           // 4. Verify Payment
           const verifyRes = await fetch('http://localhost:5004/api/payment/verify', {

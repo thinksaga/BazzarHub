@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
@@ -14,7 +14,7 @@ interface Product {
   vendorId: string;
 }
 
-export default function SearchPage() {
+function SearchResults() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q');
   const [products, setProducts] = useState<Product[]>([]);
@@ -53,7 +53,7 @@ export default function SearchPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Search Results for "{query}"</h1>
+      <h1 className="text-3xl font-bold mb-6">Search Results for &quot;{query}&quot;</h1>
       
       {error && <div className="text-red-500 mb-4">{error}</div>}
       
@@ -103,5 +103,17 @@ export default function SearchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    }>
+      <SearchResults />
+    </Suspense>
   );
 }

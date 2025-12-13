@@ -71,8 +71,9 @@ export default function RegisterPage() {
         router.push('/login');
       }, 3000);
 
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

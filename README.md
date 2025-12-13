@@ -44,6 +44,15 @@ A comprehensive, secure, and scalable multivendor marketplace platform built wit
 - ✅ **Horizontal Scaling**: Docker-ready architecture
 - ✅ **Structured Logging**: JSON-based logs for aggregation
 
+## ✅ Project Status
+
+The project has completed the following development phases:
+- **Phase 1: Backend Core** (GST, Payments, Search, Auth) - ✅ Completed
+- **Phase 2: Vendor Panel** (Onboarding, Products, Orders) - ✅ Completed
+- **Phase 3: Admin Panel** (KYC, Reports, User Management) - ✅ Completed
+- **Phase 4: Storefront** (Discovery, Cart, Checkout, Account) - ✅ Completed
+- **Phase 5: Integration** (Docker, Nginx, E2E Testing) - ✅ Completed
+
 ## 🏗 Architecture
 
 ### Tech Stack
@@ -109,11 +118,13 @@ docker-compose logs -f backend
 ```
 
 4. **Access Applications**
-- Storefront: http://localhost/ or http://localhost:3001
-- Vendor Panel: http://localhost/vendor/ or http://localhost:3002
-- Admin Panel: http://localhost/admin/ or http://localhost:3003
-- API: http://localhost/api/ or http://localhost:3000
-- API Documentation: http://localhost:3000/docs
+- **Storefront**: http://localhost (or http://localhost:3001)
+- **Vendor Panel**: http://vendor.localhost (or http://localhost:3002)
+- **Admin Panel**: http://admin.localhost (or http://localhost:3003)
+- **Backend API**: http://localhost/api (or http://localhost:5004)
+- **API Documentation**: http://localhost:5004/docs
+
+*Note: For subdomain access (`vendor.localhost`, `admin.localhost`), add them to your `/etc/hosts` file pointing to `127.0.0.1`.*
 
 5. **First Steps**
 ```bash
@@ -321,16 +332,23 @@ curl -X POST http://localhost/api/payments/verify \
 
 ## 🧪 Testing
 
-### Run Tests
+### End-to-End (E2E) Testing
+We have a comprehensive guide for manual E2E testing of the entire platform flow.
+👉 **[Read the E2E Testing Guide](./E2E_TESTING_GUIDE.md)**
+
+### Health Checks
+Run the automated health check script to verify all services are up:
+```bash
+./scripts/test-health.sh
+```
+
+### Automated Tests
 ```bash
 # Unit tests
 docker-compose exec backend npm test
 
 # Integration tests
 docker-compose exec backend npm run test:integration
-
-# End-to-end tests
-docker-compose exec backend npm run test:e2e
 
 # Test coverage
 docker-compose exec backend npm run test:coverage

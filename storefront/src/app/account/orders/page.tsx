@@ -76,7 +76,7 @@ export default function OrderHistoryPage() {
 
       {orders.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
-          <p className="text-gray-500 text-lg mb-4">You haven't placed any orders yet.</p>
+          <p className="text-gray-500 text-lg mb-4">You haven&apos;t placed any orders yet.</p>
           <Link href="/" className="text-indigo-600 font-medium hover:underline">
             Start Shopping
           </Link>

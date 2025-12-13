@@ -18,13 +18,23 @@ interface OrderItem {
   status: string;
 }
 
+interface ShippingAddress {
+  fullName: string;
+  addressLine1: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  phone: string;
+}
+
 interface Order {
   id: string;
   totalAmount: number;
   status: string;
   createdAt: string;
   items: OrderItem[];
-  shippingAddress: any;
+  shippingAddress: ShippingAddress;
 }
 
 export default function OrderDetailsPage({ params }: { params: { id: string } }) {

@@ -85,6 +85,11 @@ services:
       
       # Database
       DATABASE_URL: postgresql://${POSTGRES_USER:-mercurjs_user}:${POSTGRES_PASSWORD:-mercurjs_password}@postgres:5432/${POSTGRES_DB:-mercurjs}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-mercurjs_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-mercurjs_password}
+      DB_NAME: ${POSTGRES_DB:-mercurjs}
       DB_POOL_MIN: 5
       DB_POOL_MAX: 20
       
@@ -92,6 +97,11 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379
       CACHE_TTL: 86400
       SESSION_TTL: 604800
+
+      # Razorpay
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-rzp_test_dummy}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-dummy_secret}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-dummy_webhook_secret}
       
       # Elasticsearch
       ELASTICSEARCH_NODE: http://elasticsearch:9200
@@ -102,11 +112,7 @@ services:
       JWT_EXPIRY: 24h
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       
-      # Razorpay
-      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
-      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
-      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
-      
+
       # AWS S3
       AWS_REGION: ${AWS_REGION:-ap-south-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
